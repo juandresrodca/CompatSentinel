@@ -23,8 +23,19 @@ SEVERITY_STYLE = {
 }
 
 
-def render(result: DiffResult, console: Console, *, show_info: bool = False) -> None:
-    """Print the whole result. Info findings are summarised unless ``show_info``."""
+def render(
+    result: DiffResult, console: Console, *, show_info: bool = False, quiet: bool = False
+) -> None:
+    """Print the whole result. Info findings are summarised unless ``show_info``.
+
+    When ``quiet`` is set, only the overall verdict line is printed. JSON and
+    HTML writers are unaffected; they live outside this function.
+    """
+    if quiet:
+        style = VERDICT_STYLE[result.verdict]
+        console.print(f"Overall verdict: [{style}]{result.verdict.value.upper()}[/{style}]")
+        return
+
     console.print(
         f"[bold]before[/bold]  {escape(result.before_label)}: {describe(result.before_environment)}"
     )

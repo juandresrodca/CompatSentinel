@@ -113,6 +113,57 @@ def test_diff_missing_snapshot_is_a_clean_error(runner: CliRunner, tmp_path: Pat
     assert "not found" in result.output
 
 
+def test_diff_quiet_prints_only_the_verdict(runner: CliRunner) -> None:
+    result = runner.invoke(
+        app,
+        [
+            "diff",
+            str(EXAMPLES / "before"),
+            str(EXAMPLES / "after"),
+            "--quiet",
+            "--fail-on",
+            "never",
+        ],
+    )
+    assert result.exit_code == 0, result.output
+    lines = [line for line in result.output.splitlines() if line.strip()]
+    assert lines == ["Overall verdict: FAIL"]
+    assert "contoso-ledger" not in result.output
+    assert "Environment changes" not in result.output
+
+
+def test_diff_quiet_still_writes_json(runner: CliRunner, tmp_path: Path) -> None:
+    out = tmp_path / "diff.json"
+    result = runner.invoke(
+        app,
+        [
+            "diff",
+            str(EXAMPLES / "before"),
+            str(EXAMPLES / "after"),
+            "--quiet",
+            "--fail-on",
+            "never",
+            "--json",
+            str(out),
+        ],
+    )
+    assert result.exit_code == 0, result.output
+    assert "Overall verdict: FAIL" in result.output
+    data = json.loads(out.read_text(encoding="utf-8"))
+    assert data["verdict"] == "fail"
+
+
+def test_diff_quiet_does_not_change_fail_on(runner: CliRunner) -> None:
+    args = [
+        "diff",
+        str(EXAMPLES / "before"),
+        str(EXAMPLES / "after"),
+        "--quiet",
+    ]
+    assert runner.invoke(app, args).exit_code == 1
+    assert runner.invoke(app, [*args, "--fail-on", "never"]).exit_code == 0
+
+
 def test_diff_hides_info_findings_unless_asked(runner: CliRunner) -> None:
     args = ["diff", str(EXAMPLES / "before"), str(EXAMPLES / "after"), "--app", "notepad"]
     quiet = runner.invoke(app, args)

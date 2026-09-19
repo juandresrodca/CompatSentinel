@@ -6,6 +6,12 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- `compatsentinel diff --quiet` / `-q`: print only the overall verdict line
+  so scripts can use `--fail-on` without parsing the full terminal report.
+  JSON and HTML writers are unchanged.
+
 ## [0.1.0] - 2026-09-20
 
 Initial release.
