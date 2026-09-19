@@ -113,7 +113,22 @@ fabricated apps and regressions; nothing in it identifies a real machine.
   tied to the app, inside the capture window.
 - New Windows Error Reporting (WER) crash reports for the app.
 - The OS fingerprint: build, UBR, edition, installed KBs, .NET and VC++
-  runtimes.
+runtimes.
+
+The Application event log collector reads Error and Critical events and
+attributes them to suite apps by matching their image names in the event data.
+The common crash-related sources and event IDs are:
+
+| Source | Event ID | Typical signal |
+| --- | ---: | --- |
+| Application Error | 1000 | Application crash and faulting module |
+| .NET Runtime | 1026 | Unhandled .NET exception |
+| SideBySide | varies | Manifest or assembly activation error |
+| Windows Error Reporting | 1001 | Windows crash report |
+
+These IDs describe the common event types; collection is not restricted to
+this list. Events are selected by severity and capture time, then attributed
+to an app from their event data.
 
 **Deliberately does not capture**: file system or registry changes the app
 makes, network activity, memory or CPU usage over time, UI screenshots, or
@@ -254,6 +269,19 @@ compatsentinel doctor
 
 Everything except `capture` runs on Linux and macOS — see
 [CONTRIBUTING.md](CONTRIBUTING.md) for the full development workflow.
+
+## Troubleshooting
+
+- **`pywin32` is unavailable:** capture uses pywin32 to access Windows APIs,
+  including the Application event log. On Windows, install it into the same
+  Python environment as CompatSentinel with `python -m pip install pywin32`.
+  It is a Windows-only dependency; diff, report and MCP do not need it.
+- **Windows Error Reporting is disabled:** `compatsentinel doctor` reports
+  this on Windows. WER reports and Application Error crash events may then be
+  absent, so the `CRASH_NEW` rule cannot reliably detect new crashes.
+- **`capture supported: no` on Linux or macOS:** this is expected. Capture
+  requires Windows 10/11; diff, report and MCP can still analyze snapshots on
+  any supported OS.
 
 ## Design principles
 
