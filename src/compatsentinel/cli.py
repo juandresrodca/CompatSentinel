@@ -138,6 +138,23 @@ def capture(
     only: Annotated[
         list[str] | None, typer.Option("--only", help="Run only this app id (repeatable).")
     ] = None,
+    timeout_seconds: Annotated[
+        int | None,
+        typer.Option("--timeout-seconds", min=1, help="Override the suite timeout default."),
+    ] = None,
+    repeats: Annotated[
+        int | None, typer.Option("--repeats", min=1, help="Override the suite repeat default.")
+    ] = None,
+    alive_check_seconds: Annotated[
+        int | None,
+        typer.Option(
+            "--alive-check-seconds", min=1, help="Override the suite alive-check default."
+        ),
+    ] = None,
+    warmup_runs: Annotated[
+        int | None,
+        typer.Option("--warmup-runs", min=0, help="Override the suite warmup-run default."),
+    ] = None,
     overwrite: Annotated[
         bool, typer.Option("--overwrite", help="Replace an existing snapshot with this label.")
     ] = False,
@@ -156,6 +173,21 @@ def capture(
         loaded = suite.load_suite(suite_path)
     except (store.StoreError, suite.SuiteError) as exc:
         _fail(str(exc))
+
+    overrides = {
+        name: value
+        for name, value in {
+            "timeout_seconds": timeout_seconds,
+            "repeats": repeats,
+            "alive_check_seconds": alive_check_seconds,
+            "warmup_runs": warmup_runs,
+        }.items()
+        if value is not None
+    }
+    if overrides:
+        loaded = loaded.model_copy(
+            update={"defaults": loaded.defaults.model_copy(update=overrides)}
+        )
 
     if only:
         unknown = sorted(set(only) - {spec.id for spec in loaded.apps})

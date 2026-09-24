@@ -10,6 +10,9 @@ from typer.testing import CliRunner
 
 from compatsentinel import __version__, cli
 from compatsentinel.cli import app
+from compatsentinel.models import Snapshot
+from compatsentinel.suite import Suite
+from tests.conftest import SnapshotFactory
 
 
 def test_help_lists_doctor(runner: CliRunner) -> None:
@@ -51,6 +54,96 @@ def test_validate_reports_errors_and_exits_1(runner: CliRunner, tmp_path: Path) 
     result = runner.invoke(app, ["validate", str(bad)])
     assert result.exit_code == 1
     assert "apps.0.command" in result.output
+
+
+def test_capture_cli_overrides_defaults_but_not_per_app_settings(
+    runner: CliRunner,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    make_snapshot: SnapshotFactory,
+) -> None:
+    suite_path = tmp_path / "apps.yaml"
+    suite_path.write_text(
+        "defaults:\n"
+        "  timeout_seconds: 30\n"
+        "  repeats: 3\n"
+        "apps:\n"
+        "  - id: app\n"
+        "    command: app.exe\n"
+        "    repeats: 7\n",
+        encoding="utf-8",
+    )
+    captured: list[Suite] = []
+
+    def fake_capture(loaded: Suite, label: str, **_: object) -> Snapshot:
+        captured.append(loaded)
+        return make_snapshot(label=label, defaults=loaded.defaults)
+
+    monkeypatch.setattr(cli.sys, "platform", "win32")
+    monkeypatch.setattr(cli.runner, "capture", fake_capture)
+    result = runner.invoke(
+        app,
+        [
+            "capture",
+            "--suite",
+            str(suite_path),
+            "--label",
+            "override",
+            "--store",
+            str(tmp_path / "snapshots"),
+            "--timeout-seconds",
+            "12",
+            "--repeats",
+            "2",
+            "--alive-check-seconds",
+            "4",
+            "--warmup-runs",
+            "0",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert captured[0].defaults.model_dump() == {
+        "timeout_seconds": 12,
+        "alive_check_seconds": 4,
+        "repeats": 2,
+        "warmup_runs": 0,
+    }
+    assert captured[0].apps[0].effective(captured[0].defaults).repeats == 7
+
+
+@pytest.mark.parametrize(
+    ("option", "value"),
+    [
+        ("--timeout-seconds", "0"),
+        ("--repeats", "0"),
+        ("--alive-check-seconds", "0"),
+        ("--warmup-runs", "-1"),
+    ],
+)
+def test_capture_cli_overrides_reject_invalid_bounds(
+    runner: CliRunner,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    option: str,
+    value: str,
+) -> None:
+    monkeypatch.setattr(cli.sys, "platform", "win32")
+    result = runner.invoke(
+        app,
+        [
+            "capture",
+            "--suite",
+            "examples/apps.yaml",
+            "--label",
+            "invalid",
+            "--store",
+            str(tmp_path),
+            option,
+            value,
+        ],
+    )
+    assert result.exit_code == 2
 
 
 EXAMPLES = Path(__file__).resolve().parent.parent / "examples" / "snapshots"

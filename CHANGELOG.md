@@ -9,6 +9,7 @@ All notable changes to this project are documented here. The format follows
 ### Added
 
 - `MODULE_ADDED` diff findings for DLLs first observed after an update.
+- Command-line overrides for capture timeout, repeats, alive checks, and warmup runs.
 
 ## [0.1.0] - 2026-09-19
 
