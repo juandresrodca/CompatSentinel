@@ -300,7 +300,7 @@ def environment_findings(before: Environment, after: Environment) -> list[Findin
         old, new = getattr(before, name), getattr(after, name)
         if old != new:
             findings.append(_env_finding(f"{name} {old} -> {new}", str(old), str(new)))
-    for name in ("hotfixes", "dotnet_runtimes", "vcpp_runtimes"):
+    for name in ("hotfixes", "dotnet_runtimes", "vcpp_runtimes", "other_runtimes"):
         added, removed = list_delta(getattr(before, name), getattr(after, name))
         if added or removed:
             parts = []

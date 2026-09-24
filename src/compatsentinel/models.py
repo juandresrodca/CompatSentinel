@@ -170,6 +170,7 @@ class Environment(StrictModel):
     """Installed KB ids, sorted."""
     dotnet_runtimes: list[str] = []
     vcpp_runtimes: list[str] = []
+    other_runtimes: list[str] = []
 
 
 class Snapshot(StrictModel):

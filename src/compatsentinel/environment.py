@@ -1,4 +1,4 @@
-"""OS fingerprint: build, UBR, edition, installed KBs, .NET and VC++ runtimes.
+"""OS fingerprint: build, UBR, edition, installed KBs, and common runtimes.
 
 Everything is read from the registry or from read-only commands
 (``Get-HotFix``, ``dotnet --list-runtimes``). A source that fails is logged and
@@ -34,6 +34,8 @@ COMMAND_TIMEOUT_SECONDS = 60
 
 _KB_LINE = re.compile(r"^KB\d+$")
 _DOTNET_RUNTIME_LINE = re.compile(r"^(?P<name>\S+)\s+(?P<version>\S+)\s+\[")
+_JAVA_VERSION_LINE = re.compile(r'^(?:openjdk|java) version "(?P<version>[^"]+)"')
+_NODE_VERSION_LINE = re.compile(r"^v?(?P<version>\d+(?:\.\d+){1,3}(?:[-+][0-9A-Za-z.-]+)?)$")
 
 
 def collect() -> Environment:
@@ -78,6 +80,21 @@ def parse_dotnet_runtimes(text: str) -> list[str]:
     return sorted(set(runtimes))
 
 
+def parse_java_version(text: str) -> str | None:
+    """Extract the runtime version from the first line of ``java -version``."""
+    first_line = text.strip().splitlines()[0] if text.strip() else ""
+    if match := _JAVA_VERSION_LINE.match(first_line.strip()):
+        return f"Java {match['version']}"
+    return None
+
+
+def parse_node_version(text: str) -> str | None:
+    """Extract a Node.js version such as ``v22.19.0``."""
+    if match := _NODE_VERSION_LINE.match(text.strip()):
+        return f"Node.js {match['version']}"
+    return None
+
+
 def _to_int(value: object) -> int | None:
     try:
         return int(str(value))
@@ -105,6 +122,7 @@ def _collect_windows() -> Environment:
         hotfixes=_installed_hotfixes(),
         dotnet_runtimes=_dotnet_runtimes(),
         vcpp_runtimes=_vcpp_runtimes(),
+        other_runtimes=_other_runtimes(),
     )
 
 
@@ -129,7 +147,7 @@ def _read_registry_values(key_path: str, names: tuple[str, ...]) -> dict[str, ob
     return found
 
 
-def _run(command: list[str]) -> str:
+def _run(command: list[str], *, prefer_stderr: bool = False) -> str:
     """Run a read-only command and return stdout, or "" when it fails."""
     try:
         completed = subprocess.run(
@@ -144,6 +162,8 @@ def _run(command: list[str]) -> str:
         return ""
     if completed.returncode != 0:
         log.warning("%s exited %d: %s", command[0], completed.returncode, completed.stderr.strip())
+    if prefer_stderr and completed.stderr.strip():
+        return completed.stderr
     return completed.stdout
 
 
@@ -168,6 +188,20 @@ def _dotnet_runtimes() -> list[str]:
         runtimes.append(f".NET Framework {framework}")
     if shutil.which("dotnet"):
         runtimes.extend(parse_dotnet_runtimes(_run(["dotnet", "--list-runtimes"])))
+    return runtimes
+
+
+def _other_runtimes() -> list[str]:
+    """Java and Node.js versions available on ``PATH``."""
+    runtimes: list[str] = []
+    if shutil.which("java"):
+        java = parse_java_version(_run(["java", "-version"], prefer_stderr=True))
+        if java:
+            runtimes.append(java)
+    if shutil.which("node"):
+        node = parse_node_version(_run(["node", "--version"]))
+        if node:
+            runtimes.append(node)
     return runtimes
 
 

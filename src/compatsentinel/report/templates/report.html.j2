@@ -86,6 +86,7 @@
     <tr><td>Installed KBs</td><td>{{ b.hotfixes | length }}</td><td>{{ a.hotfixes | length }}</td></tr>
     <tr><td>.NET runtimes</td><td>{{ b.dotnet_runtimes | length }}</td><td>{{ a.dotnet_runtimes | length }}</td></tr>
     <tr><td>VC++ redistributables</td><td>{{ b.vcpp_runtimes | length }}</td><td>{{ a.vcpp_runtimes | length }}</td></tr>
+    <tr><td>Other runtimes</td><td>{{ b.other_runtimes | length }}</td><td>{{ a.other_runtimes | length }}</td></tr>
     </tbody>
   </table>
   {% if result.environment_findings %}

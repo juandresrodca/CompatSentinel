@@ -20,6 +20,15 @@ def test_identical_snapshots_pass_with_no_findings() -> None:
     assert result.before_label == "a" and result.after_label == "b"
 
 
+def test_other_runtime_changes_are_reported() -> None:
+    before = make_snapshot(environment=make_environment(other_runtimes=["Java 17.0.12"]))
+    after = make_snapshot(environment=make_environment(other_runtimes=["Java 21.0.8"]))
+
+    assert [finding.message for finding in diff_snapshots(before, after).environment_findings] == [
+        "other_runtimes: added Java 21.0.8; removed Java 17.0.12"
+    ]
+
+
 def test_apps_missing_on_one_side_are_reported_not_scored() -> None:
     before = make_snapshot(apps=[make_run("a"), make_run("b")])
     after = make_snapshot(apps=[make_run("b"), make_run("c")])
